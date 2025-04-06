@@ -47,8 +47,8 @@ The Transport Co. Delivery Dashboard is a modern, responsive web application des
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/transport-delivery-dashboard.git
-   cd transport-delivery-dashboard
+   git clone https://github.com/ayushkrjhadev/transport.git
+   cd transport
    ```
 
 2. **Open the project**:
