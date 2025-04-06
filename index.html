@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transport Co. - Delivery Dashboard</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons Font -->
+    <link rel="stylesheet" href="https://unpkg.com/lucide-static@latest/font/Lucide.css">
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #111827 100%);
+            color: #ffffff;
+        }
+        
+        .icon {
+            font-family: 'Lucide';
+            font-style: normal;
+            font-weight: normal;
+            font-variant: normal;
+            text-transform: none;
+            line-height: 1;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .gradient-card {
+            background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .status-badge {
+            animation: pulse 2s infinite;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .map-container {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            height: 300px;
+            border-radius: 0.5rem;
+        }
+        
+        .map-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 50%;
+            animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            z-index: 1000;
+        }
+        
+        @keyframes ping {
+            75%, 100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #6366F1 0%, #4F46E5 100%);
+            transition: width 0.5s ease-in-out;
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .hover-scale {
+            transition: transform 0.2s ease-in-out;
+        }
+        
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .avatar-ring {
+            position: relative;
+        }
+        
+        .avatar-ring::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            animation: rotate 4s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .notification-dot {
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Custom map styles for dark theme */
+        .leaflet-container {
+            background: #1f2937;
+        }
+        
+        .leaflet-tile-pane {
+            filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        }
+        
+        .leaflet-control-attribution {
+            background: rgba(0, 0, 0, 0.5) !important;
+            color: #9ca3af !important;
+        }
+        
+        .leaflet-control-attribution a {
+            color: #9ca3af !important;
+        }
+        
+        .leaflet-control-zoom a {
+            background-color: #374151 !important;
+            color: #e5e7eb !important;
+            border-color: #4b5563 !important;
+        }
+        
+        .leaflet-control-zoom a:hover {
+            background-color: #4b5563 !important;
+        }
+        
+        .leaflet-popup-content-wrapper {
+            background-color: #1f2937 !important;
+            color: #e5e7eb !important;
+        }
+        
+        .leaflet-popup-tip {
+            background-color: #1f2937 !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-sm sticky top-0 z-50 glass-effect">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <span class="icon text-2xl text-indigo-400">📦</span>
+                <span class="text-xl font-semibold text-white bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-blue-300">Transport Co.</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-300">Welcome, John Doe!</span>
+                <div class="relative">
+                    <span class="icon text-xl text-gray-300 cursor-pointer avatar-ring">👤</span>
+                    <span class="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800 notification-dot"></span>
+                </div>
+                <button class="icon text-xl text-gray-300 hover:text-red-400 transition-colors">🚪</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-blue-300">My Deliveries</h1>
+            <div class="flex space-x-2">
+                <button class="btn-primary px-4 py-2 text-white rounded-lg flex items-center">
+                    <span class="icon mr-2">📱</span>
+                    Download App
+                </button>
+                <button class="btn-secondary px-4 py-2 text-gray-300 rounded-lg flex items-center">
+                    <span class="icon mr-2">🔔</span>
+                    Notifications
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Shipment Section -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center text-white">
+                <span class="icon mr-2">🚚</span>
+                Active Shipment
+            </h2>
+            <div class="gradient-card rounded-lg shadow-sm p-6 transition-all duration-300 card-hover">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <!-- Map Placeholder -->
+                    <div class="flex-1 rounded-lg p-4 map-container" id="delivery-map">
+                        <!-- Map will be initialized here -->
+                    </div>
+                    <!-- Tracking Info -->
+                    <div class="flex-1">
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <p class="text-sm text-gray-400">Tracking ID</p>
+                                    <p class="font-medium text-white">TRK123456789</p>
+                                </div>
+                                <span class="status-badge px-3 py-1 text-white rounded-full text-sm">
+                                    In Transit
+                                </span>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Order Description</p>
+                                <p class="font-medium text-white">Electronics Order</p>
+                                <div class="mt-1 text-sm text-gray-400">
+                                    <p>• 1x Gaming Laptop</p>
+                                    <p>• 1x Wireless Mouse</p>
+                                    <p>• 1x Keyboard</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400 flex items-center">
+                                    <span class="icon mr-1">⏰</span>
+                                    Estimated Arrival
+                                </p>
+                                <p class="font-medium text-white">2:30 PM - 3:30 PM</p>
+                                <div class="mt-2 w-full bg-gray-700 rounded-full h-2">
+                                    <div class="progress-bar h-2 rounded-full" style="width: 75%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-400">Current Status</p>
+                                <p class="text-green-400 font-medium">Out for Delivery - Driver Mike is 3 stops away</p>
+                                <div class="mt-2 flex items-center space-x-2">
+                                    <img src="https://ui-avatars.com/api/?name=Mike+Driver&background=0D8ABC&color=fff" alt="Driver" class="w-8 h-8 rounded-full">
+                                    <span class="text-sm text-gray-400">Mike Driver • 4.8 ★</span>
+                                </div>
+                            </div>
+                            <div class="flex space-x-4 pt-4">
+                                <button class="btn-primary px-4 py-2 rounded-lg flex items-center">
+                                    <span class="icon mr-2">🗺️</span>
+                                    Track Live
+                                </button>
+                                <button class="btn-secondary px-4 py-2 rounded-lg flex items-center">
+                                    <span class="icon mr-2">⚙️</span>
+                                    Manage Options
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upcoming Deliveries Section -->
+        <section class="mb-8">
+            <h2 class="text-xl font-semibold mb-4 flex items-center text-white">
+                <span class="icon mr-2">📅</span>
+                Upcoming Deliveries
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="gradient-card rounded-lg shadow-sm p-4 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-white">Home Goods Package</p>
+                            <p class="text-sm text-gray-400">TRK987654321</p>
+                            <div class="mt-2 flex items-center text-sm text-gray-400">
+                                <span class="icon mr-1">📦</span>
+                                <span>3 items</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-400">Expected: Tomorrow</p>
+                            <p class="text-sm font-medium text-indigo-400">10:00 AM</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="gradient-card rounded-lg shadow-sm p-4 card-hover">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-white">Office Supplies</p>
+                            <p class="text-sm text-gray-400">TRK456789123</p>
+                            <div class="mt-2 flex items-center text-sm text-gray-400">
+                                <span class="icon mr-1">📦</span>
+                                <span>5 items</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm text-gray-400">Expected: Friday</p>
+                            <p class="text-sm font-medium text-indigo-400">2:00 PM</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Delivery History Section -->
+        <section>
+            <h2 class="text-xl font-semibold mb-4 flex items-center text-white">
+                <span class="icon mr-2">📜</span>
+                Delivery History
+            </h2>
+            <div class="gradient-card rounded-lg shadow-sm overflow-hidden card-hover">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-800">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Order Description</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Tracking ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-gray-800 divide-y divide-gray-700">
+                            <tr class="hover:bg-gray-700 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2024-03-15</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">Grocery Delivery</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">TRK789123456</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-200">
+                                        Delivered
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-indigo-400 hover:text-indigo-300">View Details</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-700 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">2024-03-14</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">Clothing Package</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 hidden sm:table-cell">TRK321654987</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-900 text-green-200">
+                                        Delivered
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-indigo-400 hover:text-indigo-300">View Details</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 mt-8 py-6 glass-effect">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">© 2024 Transport Co. All rights reserved.</p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="text-indigo-400 text-sm hover:text-indigo-300">Contact Support</a>
+                    <a href="#" class="text-gray-400 text-sm hover:text-gray-300">Privacy Policy</a>
+                    <a href="#" class="text-gray-400 text-sm hover:text-gray-300">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS for maps -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Initialize the map
+        document.addEventListener('DOMContentLoaded', function() {
+            // Create map centered on a default location (New York City)
+            const map = L.map('delivery-map').setView([40.7128, -74.0060], 13);
+            
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            
+            // Add a marker for the delivery location (destination)
+            const destinationMarker = L.marker([40.7128, -74.0060]).addTo(map)
+                .bindPopup('Delivery Destination')
+                .openPopup();
+            
+            // Add a marker for the driver's current location (simulated)
+            const driverMarker = L.marker([40.7028, -74.0160]).addTo(map)
+                .bindPopup('Driver Mike - 2.5 miles away');
+            
+            // Add a polyline to show the route
+            const routeLine = L.polyline([
+                [40.7028, -74.0160], // Driver location
+                [40.7078, -74.0110], // Intermediate point
+                [40.7128, -74.0060]  // Destination
+            ], {
+                color: '#6366F1',
+                weight: 3,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }).addTo(map);
+            
+            // Add a pulsing circle around the driver marker
+            const pulsingCircle = L.circle([40.7028, -74.0160], {
+                color: '#6366F1',
+                fillColor: '#6366F1',
+                fillOpacity: 0.2,
+                radius: 500,
+                weight: 1
+            }).addTo(map);
+            
+            // Animate the pulsing circle
+            function pulseCircle() {
+                pulsingCircle.setRadius(500);
+                pulsingCircle.setStyle({fillOpacity: 0.2});
+                
+                setTimeout(function() {
+                    pulsingCircle.setRadius(1000);
+                    pulsingCircle.setStyle({fillOpacity: 0});
+                }, 1000);
+            }
+            
+            // Start the pulsing animation
+            setInterval(pulseCircle, 2000);
+            
+            // Fit the map to show all markers
+            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+        });
+    </script>
+</body>
+</html> 
